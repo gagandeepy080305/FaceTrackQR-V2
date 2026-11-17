@@ -1,0 +1,122 @@
+To start this project : 
+in terminal :
+brew services start mongodb/brew/mongodb-community
+
+Terminal 1:
+cd backend 
+source venv/bin/activate
+python app.py
+
+Terminal 2:
+cd frontend
+npm run dev
+
+
+To stop this project : 
+
+ctrl+c in both terminals and then 
+
+In terminal in which u started mongodb : 
+brew services stop mongodb/brew/mongodb-community
+
+
+Security notes (read once):
+- Faculty sign in with Faculty ID + password and receive a login token (8 hours).
+- Students can only register a face while a faculty member shows an
+  ENROLLMENT CODE: Faculty dashboard -> assignment -> "Enrollment Code"
+  (valid 10 minutes, class-specific). Students enter it on Face Registration
+  (the QR pre-fills it).
+- A registered face can't be overwritten by the student. To redo one, faculty
+  use the "Reset a student's face" box in the same Enrollment panel.
+- Flask debug mode is off by default. For local development with auto-reload:
+      FLASK_DEBUG=1 python app.py      (reachable from this machine only)
+  For phone testing leave it off so the server listens on the Wi-Fi.
+- Adding faculty/students/classes over the API needs ADMIN_API_KEY (see
+  backend/.env.example). Use seed_data.py / the scripts for normal setup.
+- After upgrading, run once:  python migrate_passwords.py
+
+Rotating QR + check-in evidence (read once):
+- The attendance QR on the faculty dashboard refreshes every few seconds. A
+  student's phone trades the freshly scanned QR for a short single-use check-in
+  pass; old screenshots and saved links no longer work and ask to scan again.
+- Reloading the check-in page also asks to scan again (the pass is only kept
+  in memory).
+- Each check-in stores the selfie, match score, time and a device id. After
+  "View Attendance", the faculty sheet shows Time, Review flags (Shared device,
+  Borderline match, Not live camera) and a Selfie viewer.
+- Live in-page camera needs https (or localhost). Over plain http on the Wi-Fi
+  address the page uses the phone's camera app instead and the check-in is
+  flagged "Not live camera".
+- Phone testing over the LAN needs the frontend started with
+      VITE_API_URL=http://<your-LAN-ip>:5001 npm run dev -- --host 0.0.0.0
+  (plain http: the phone's camera app is used for the selfie).
+
+Local https, for the LIVE camera on phones (one-time setup):
+  Terminal 1 (backend, reachable only through the https dev server):
+      cd backend && source venv/bin/activate
+      HOST=127.0.0.1 TRUST_PROXY_HOPS=1 python app.py
+  Terminal 2 (frontend):
+      cd frontend
+      npm run make-cert        # once; re-run if your Wi-Fi IP changes
+      npm run dev:https
+  Then open https://localhost:5173 (faculty) and let students scan the QR,
+  which points at https://<your-LAN-ip>:5173. Each browser/phone shows a
+  "not private" warning once because the certificate is self-signed: accept it.
+  After that you can set REQUIRE_LIVE_CAPTURE=1 in backend/.env.
+
+Hands-free face scan (no photo button):
+- With the live camera available (https), the check-in page scans your face by
+  itself. Enter your USN once on a phone (it is remembered); next time the
+  camera starts right after the QR scan and checks you in when it recognises you.
+  Tap "Not you?" to change the USN.
+- Up to 3 wrong-face frames stop the scan ("Face not recognised"); the server
+  also blocks a USN from one address after 8 wrong-face attempts in 10 minutes.
+- Without camera access in the page, the old "Take a selfie" button is used.
+- This is not iPhone Face ID (no depth sensor): it checks a camera image with
+  the Facenet512 model.
+
+Network lock + live check-ins:
+- A session accepts check-ins only from the network the faculty started it on
+  (nothing to configure; works on a home Wi-Fi now and the college network later).
+  Students on mobile data / another Wi-Fi / a VPN get "Not connected to the class network".
+- The dashboard shows "Accepting check-ins from: ..." and lists blocked attempts with
+  an Allow button (use it if the college Wi-Fi uses several address blocks).
+  "Testing only: allow check-ins from any network" turns the lock off for new sessions.
+- The Live check-ins list is text only and refreshes every 4 seconds. A photo loads only
+  when you click Photo. Reject marks a check-in absent (kept on record, Restore undoes it).
+- QR changes every 8 seconds; a scan must finish within 45 seconds.
+- To undo this whole change, tell Claude: "roll back to previous".
+
+Proxy-attendance protections (2026-11-17):
+- Registration: the faculty opens an enrollment window (5 min, locked to the faculty's network). A student
+  takes a live photo; it stays PENDING until the faculty looks at the photo in the Enrollment panel and
+  clicks Approve (or Reject). A phone can register only one student per window, and on a private Wi-Fi
+  one address can't register a second student either (clearing the browser's data doesn't get round it).
+
+Hands-free registration (2026-11-17):
+- Registration works like the check-in scan: enter USN + code, tap "Start face scan", then just look at the
+  phone. No capture button, no preview. The page sends two frames about a second apart; the server checks
+  each one (face found, big enough, centred, straight, bright enough, sharp, only one person) and that the
+  two frames show the same person, then keeps the sharper one. Unclear frames get a hint ("Move closer",
+  "Too dark"...) and the scan carries on. Limits can be tuned with REGISTER_* values in backend/.env.
+- Check-in: each phone gets a server-signed id; a pass only works on the phone/address that asked for it,
+  and one phone can check in only one student per session. The Live check-ins card warns when a phone
+  tries a second student.
+- The old public face-test page is gone; /face/verify now needs a faculty login.
+- To test several USNs from ONE phone, tick "Testing only: allow check-ins from any network" before
+  generating the session / enrollment code.
+
+Borderline hold (2026-11-17):
+- A face match that only just passes (distance between the "Borderline" line, 85% of the pass mark, and the
+  pass mark itself) is the kind a look-alike or sibling produces. It is now stored as "Review": the student is
+  told "Your face matched, but not clearly. Your faculty will confirm your attendance", it is NOT counted
+  present (live count, final sheet, percentages), and the live list shows an amber row "Needs your review" with
+  Confirm / Reject buttons next to the Photo button. Confirm makes it Present; Reject keeps it out.
+- Clear matches are unaffected. Set HOLD_BORDERLINE=0 in backend/.env to go back to "count it, with a flag".
+
+Tests and accuracy report in the repo (2026-11-17):
+- Backend tests: cd backend && python tests/run_tests.py  (copies the backend to a temp folder, starts a throwaway
+  mongod, uses a stand-in DeepFace; never touches your database or photos). 306 checks across 7 suites.
+- Accuracy: backend/tools/accuracy_report.py makes a Markdown table of genuine vs impostor distances from labelled
+  photos (labels in backend/tools/labels.csv, gitignored). Latest run + method + limits: docs/ACCURACY.md.
+  Sample is tiny (2 people); more classmates' photos are needed for a defensible percentage.

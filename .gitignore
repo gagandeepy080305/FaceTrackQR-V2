@@ -1,0 +1,29 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# React
+node_modules/
+dist/
+
+# Environment Variables
+.env
+
+# Uploaded Images
+uploads/faces/
+
+# VS Code
+.vscode/
+# Auto-generated local signing key
+backend/.secret_key
+uploads/checkins/
+frontend/.certs/
+
+# Biometric labels used for the accuracy report
+backend/tools/labels*.csv
+backend/uploads/
+
+# macOS / editor / tool state
+.DS_Store
+.claude/

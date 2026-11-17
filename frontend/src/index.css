@@ -1,0 +1,47 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg-page: #f4f6f9;
+  --bg-surface: #ffffff;
+  --bg-subtle: #f8fafc;
+  --border-color: #dfe4ec;
+  --border-strong: #c5cdd9;
+
+  --brand-primary: #1f4fa3;
+  --brand-primary-hover: #183f83;
+  --brand-tint: #e8eef9;
+  --brand-ink: #14284b;
+
+  --text-primary: #0f1b2d;
+  --text-secondary: #4b5a70;
+  --text-tertiary: #7a879a;
+
+  --ok-text: #166534;   --ok-bg: #eaf6ee;   --ok-border: #b9e0c5;
+  --bad-text: #a61b1b;  --bad-bg: #fcefef;  --bad-border: #f0c4c4;
+  --warn-text: #8a4b08; --warn-bg: #fdf4e6; --warn-border: #f0d6a8;
+  --info-text: #1f4fa3; --info-bg: #e8eef9; --info-border: #c3d3ef;
+
+  /* legacy aliases used by the faculty dashboard */
+  --status-present-text: var(--ok-text);
+  --status-absent-text: var(--bad-text);
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --shadow-card: 0 1px 2px rgba(15, 27, 45, 0.05), 0 1px 3px rgba(15, 27, 45, 0.04);
+  --radius-card: 10px;
+  --radius-button: 8px;
+  --radius-input: 8px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root { min-height: 100vh; display: flex; flex-direction: column; }
